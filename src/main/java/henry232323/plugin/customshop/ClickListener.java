@@ -1,6 +1,7 @@
 package henry232323.plugin.customshop;
 
 import com.destroystokyo.paper.event.block.BlockDestroyEvent;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.type.Chest;
@@ -49,25 +50,19 @@ public class ClickListener implements Listener {
         if (!event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) {
             return;
         }
-        System.out.println(2);
         Block block = event.getClickedBlock();
 
         if (block == null) {
             return;
         }
-        System.out.println(3);
 
         if (block.getBlockData() instanceof Sign || block.getBlockData() instanceof WallSign) {
-            System.out.println(4);
             if (block.hasMetadata("shop")) {
-                System.out.println(5);
                 List<MetadataValue> mdv = block.getMetadata("shop");
                 for (MetadataValue val : mdv) {
                     if (val.getOwningPlugin() == plugin) {
                         Shop shop = (Shop) val.value();
-                        System.out.println(6);
                         playerShopInteract(event.getPlayer(), shop);
-                        System.out.println(7);
                     }
                 }
             }
@@ -91,38 +86,44 @@ public class ClickListener implements Listener {
                 if (event.getLines()[1].charAt(0) == '$') {
                     buyAmount = Integer.parseInt(event.getLines()[1].substring(1, event.getLines()[1].length()));
                 } else {
-                    String[] parts = event.getLines()[1].split(" ");
-                    if (parts.length > 2) {
-                        return;
-                    }
-                    buyAmount = Integer.parseInt(parts[0]);
-                    buyItem = parts[1];
-                    if (buyAmount > 64) {
-                        return;
-                    }
-                    Material mat = Material.getMaterial(buyItem);
+                    String line1 = event.getLines()[1];
+                    String part1 = line1.substring(0, line1.indexOf(' '));
+                    String part2 = line1.substring(part1.length(), line1.length());
+
+                    buyAmount = Integer.parseInt(part1.trim());
+                    buyItem = part2.toUpperCase().trim();
+                    Material mat = Material.matchMaterial(buyItem.toUpperCase().trim());
                     if (mat == null) {
+                        event.getPlayer().sendMessage(ChatColor.RED + "Malformed sign, invalid item at line 2");
+                        return;
+                    }
+
+                    if (buyAmount > new ItemStack(mat).getMaxStackSize()) {
+                        event.getPlayer().sendMessage(ChatColor.RED + "Malformed sign, too many items at line 2");
                         return;
                     }
                 }
 
                 String sellItem = "";
-                int sellAmount;
+                int sellAmount = 0;
 
                 if (event.getLines()[2].charAt(0) == '$') {
                     sellAmount = Integer.parseInt(event.getLines()[2].substring(1, event.getLines()[2].length()));
                 } else {
-                    String[] parts = event.getLines()[3].split(" ");
-                    if (parts.length > 2) {
-                        return;
-                    }
-                    sellAmount = Integer.parseInt(parts[0]);
-                    if (sellAmount > 64) {
-                        return;
-                    }
-                    sellItem = parts[1];
-                    Material mat = Material.getMaterial(sellItem);
+                    String line2 = event.getLines()[2];
+                    String part1 = line2.substring(0, line2.indexOf(' '));
+                    String part2 = line2.substring(part1.length() + 1, line2.length());
+
+                    sellAmount = Integer.parseInt(part1.trim());
+                    sellItem = part2.toUpperCase().trim();
+                    Material mat = Material.matchMaterial(sellItem.toUpperCase().trim());
                     if (mat == null) {
+                        event.getPlayer().sendMessage(ChatColor.RED + "Malformed sign, invalid item at line 2");
+                        return;
+                    }
+
+                    if (sellAmount > new ItemStack(mat).getMaxStackSize()) {
+                        event.getPlayer().sendMessage(ChatColor.RED + "Malformed sign, too many items at line 3");
                         return;
                     }
                 }
@@ -132,11 +133,14 @@ public class ClickListener implements Listener {
                 event.getPlayer().sendMessage(ChatColor.GREEN + "Successfully created new shop!");
 
                 Shop shop = new Shop(event.getPlayer(), sign.getLocation(), buyAmount, sellAmount, buyItem, sellItem);
+                shop.setPlugin(plugin);
                 sign.setMetadata("shop", new FixedMetadataValue(plugin, shop));
                 plugin.shops.add(shop);
                 plugin.save(plugin.shops, new File(plugin.getDataFolder(), "shops.dat"));
 
             } catch (Exception e) {
+                event.getPlayer().sendMessage(ChatColor.RED + "Malformed sign, exception");
+                e.printStackTrace();
                 return;
             }
         }
@@ -144,8 +148,8 @@ public class ClickListener implements Listener {
     }
 
     public void playerShopInteract(Player player, Shop shop) {
-        System.out.println("Player shop interact!");
-        Block block = shop.getStoragePosition().getBlock();
+        Location pos = shop.getStoragePosition();
+        Block block = pos.getBlock();
         org.bukkit.block.Chest chest;
         try {
             chest = (org.bukkit.block.Chest) block.getState();
@@ -159,25 +163,26 @@ public class ClickListener implements Listener {
         boolean buyerCheck = false;
         boolean sellerCheck = false;
         if (shop.sellItem.equals("")) {
-            System.out.println(shop.getOwner());
-            System.out.println(pl)
             if (plugin.getEconomy().has(shop.getOwner(), shop.sellNumber)) {
                 buyerCheck = true;
             }
-        } else if (!chestInv.contains(Material.getMaterial(shop.sellItem), shop.sellNumber)) {
-            buyerCheck = true;
+        } else if (playerInv.firstEmpty() == -1) {
+            player.sendMessage(ChatColor.RED + "You do not have any space in your inventory!");
+            return;
+        } else  {
+            if (chestInv.contains(Material.matchMaterial(shop.sellItem), shop.sellNumber)) {
+                buyerCheck = true;
+            }
         }
 
         if (shop.buyItem.equals("")) {
             if (plugin.getEconomy().has(player, shop.buyNumber)) {
                 sellerCheck = true;
             }
-        } else if (!playerInv.contains(Material.getMaterial(shop.buyItem), shop.buyNumber)) {
+        } else if (chestInv.firstEmpty() == -1) {
+            player.sendMessage(ChatColor.RED + "This shop is out of room to buy!");
+        } else if (playerInv.contains(Material.matchMaterial(shop.buyItem), shop.buyNumber)) {
             sellerCheck = true;
-            if (playerInv.firstEmpty() == -1) {
-                player.sendMessage(ChatColor.RED + "You do not have any space in your inventory!");
-                return;
-            }
         }
 
         if (!buyerCheck) {
@@ -193,24 +198,30 @@ public class ClickListener implements Listener {
             plugin.getEconomy().withdrawPlayer(shop.getOwner(), shop.sellNumber);
             plugin.getEconomy().depositPlayer(player, shop.sellNumber);
 
-            player.sendMessage(ChatColor.GREEN + String.format("%s was deposited into your account.", shop.sellNumber));
+            player.sendMessage(ChatColor.GREEN + String.format("$%s was deposited into your account.", shop.sellNumber));
             if (shop.getOwner().isOnline()) {
-                plugin.getServer().getPlayer(shop.getOwner().getUniqueId()).sendMessage(ChatColor.GREEN + String.format("%s was taken from your account.", shop.sellNumber));
+                plugin.getServer().getPlayer(shop.getOwner().getUniqueId()).sendMessage(ChatColor.GREEN + String.format("$%s was taken from your account.", shop.sellNumber));
             }
         } else {
-            chestInv.removeItemAnySlot(new ItemStack(Material.getMaterial(shop.sellItem), shop.sellNumber));
+            ItemStack stack = new ItemStack(Material.matchMaterial(shop.sellItem), shop.sellNumber);
+            chestInv.removeItemAnySlot(stack);
+            playerInv.addItem(stack);
+
+            player.sendMessage(String.format("You have received %s %s", shop.sellNumber, shop.sellItem));
         }
 
         if (shop.buyItem.equals("")) {
             plugin.getEconomy().withdrawPlayer(player, shop.buyNumber);
             plugin.getEconomy().depositPlayer(shop.getOwner(), shop.buyNumber);
-            player.sendMessage(ChatColor.GREEN + String.format("%s was taken from your account.", shop.buyNumber));
+            player.sendMessage(ChatColor.GREEN + String.format("$%s was taken from your account.", shop.buyNumber));
             if (shop.getOwner().isOnline()) {
-                plugin.getServer().getPlayer(shop.getOwner().getUniqueId()).sendMessage(ChatColor.GREEN + String.format("%s was added to your account.", shop.buyNumber));
+                plugin.getServer().getPlayer(shop.getOwner().getUniqueId()).sendMessage(ChatColor.GREEN + String.format("$%s was added to your account.", shop.buyNumber));
             }
 
         } else {
-            playerInv.removeItemAnySlot(new ItemStack(Material.getMaterial(shop.sellItem), shop.sellNumber));
+            ItemStack stack = new ItemStack(Material.matchMaterial(shop.buyItem), shop.buyNumber);
+            playerInv.removeItemAnySlot(stack);
+            chestInv.addItem(stack);
         }
 
     }
