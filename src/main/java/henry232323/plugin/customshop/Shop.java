@@ -3,6 +3,7 @@ package henry232323.plugin.customshop;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -23,6 +24,8 @@ public class Shop implements Serializable {
 
 
     public Shop(OfflinePlayer owner, Location pos, int bNumber, int sNumber, String bItem, String sItem) {
+        System.out.println(bNumber + " ," + sNumber + ", " + bItem + ", " + sItem);
+
         this.ownerID = owner.getUniqueId();
         this.worldName = pos.getWorld().getName();
         this.x = pos.getBlockX();
@@ -44,8 +47,9 @@ public class Shop implements Serializable {
     }
 
     public Location getPosition() {
+        World world = plugin.getServer().getWorld(worldName);
         return new Location(
-                plugin.getServer().getWorld(worldName),
+                world,
                 x,
                 y,
                 z
