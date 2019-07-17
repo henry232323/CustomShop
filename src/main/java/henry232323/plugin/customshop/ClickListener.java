@@ -1,6 +1,5 @@
 package henry232323.plugin.customshop;
 
-import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -11,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -32,8 +32,9 @@ public class ClickListener implements Listener {
     }
 
     @EventHandler
-    public void onBlockDestroyed(BlockDestroyEvent event) {
+    public void onBlockDestroyed(BlockBreakEvent event) {
         Block block = event.getBlock();
+        System.out.println("Shop destroyed!");
         if (!(block.getBlockData() instanceof Sign || block.getBlockData() instanceof WallSign)) {
             return;
         }
@@ -41,6 +42,7 @@ public class ClickListener implements Listener {
         if (block.getBlockData() instanceof Sign || block.getBlockData() instanceof WallSign) {
             if (block.hasMetadata("shop")) {
                 block.removeMetadata("shop", plugin);
+                plugin.save(plugin.shops, new File(plugin.getDataFolder(), "shops.dat"));
             }
         }
     }
@@ -129,7 +131,6 @@ public class ClickListener implements Listener {
                 }
 
                 org.bukkit.block.Sign sign = (org.bukkit.block.Sign) block.getState();
-                sign.setLine(3, event.getPlayer().getDisplayName());
                 event.getPlayer().sendMessage(ChatColor.GREEN + "Successfully created new shop!");
 
                 Shop shop = new Shop(event.getPlayer(), sign.getLocation(), buyAmount, sellAmount, buyItem, sellItem);
@@ -137,6 +138,8 @@ public class ClickListener implements Listener {
                 sign.setMetadata("shop", new FixedMetadataValue(plugin, shop));
                 plugin.shops.add(shop);
                 plugin.save(plugin.shops, new File(plugin.getDataFolder(), "shops.dat"));
+                System.out.println(event.getPlayer().getDisplayName());
+                event.setLine(3, event.getPlayer().getDisplayName());
 
             } catch (Exception e) {
                 event.getPlayer().sendMessage(ChatColor.RED + "Malformed sign, exception");
@@ -144,7 +147,6 @@ public class ClickListener implements Listener {
                 return;
             }
         }
-
     }
 
     public void playerShopInteract(Player player, Shop shop) {
@@ -153,7 +155,7 @@ public class ClickListener implements Listener {
         org.bukkit.block.Chest chest;
         try {
             chest = (org.bukkit.block.Chest) block.getState();
-        } catch (Exception e ) {
+        } catch (Exception e) {
             player.sendMessage("This shop is broken! Contact the owner!");
             return;
         }
@@ -169,7 +171,7 @@ public class ClickListener implements Listener {
         } else if (playerInv.firstEmpty() == -1) {
             player.sendMessage(ChatColor.RED + "You do not have any space in your inventory!");
             return;
-        } else  {
+        } else {
             if (chestInv.contains(Material.matchMaterial(shop.sellItem), shop.sellNumber)) {
                 buyerCheck = true;
             }
@@ -207,7 +209,7 @@ public class ClickListener implements Listener {
             chestInv.removeItemAnySlot(stack);
             playerInv.addItem(stack);
 
-            player.sendMessage(String.format("You have received %s %s", shop.sellNumber, shop.sellItem));
+            player.sendMessage(String.format(ChatColor.BLUE + "You have received %s %s", shop.sellNumber, shop.sellItem));
         }
 
         if (shop.buyItem.equals("")) {

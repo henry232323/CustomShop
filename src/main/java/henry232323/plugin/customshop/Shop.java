@@ -24,8 +24,6 @@ public class Shop implements Serializable {
 
 
     public Shop(OfflinePlayer owner, Location pos, int bNumber, int sNumber, String bItem, String sItem) {
-        System.out.println(bNumber + " ," + sNumber + ", " + bItem + ", " + sItem);
-
         this.ownerID = owner.getUniqueId();
         this.worldName = pos.getWorld().getName();
         this.x = pos.getBlockX();
