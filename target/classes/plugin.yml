@@ -1,7 +1,0 @@
-name: CustomShop
-version: 1.0-SNAPSHOT
-main: henry232323.plugin.customshop.CustomShop
-depend: [Vault]
-authors: [henry232323]
-api-version: 1.13
-description: A plugin allowing various custom shop features for use with a server economy
