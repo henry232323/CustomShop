@@ -1,4 +1,4 @@
-package henry232323.plugin.customshop;
+package henry232323.customshop;
 
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.permission.Permission;
